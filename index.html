@@ -62,7 +62,6 @@
             z-index: 1;
         }
 
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -178,7 +177,6 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Filters */
         .filter-bar {
             display: flex;
             align-items: center;
@@ -249,7 +247,6 @@
         .filter-select:focus { border-color: var(--accent-blue); }
         .filter-select option { background: var(--bg-secondary); color: var(--text-primary); }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
@@ -326,7 +323,6 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Cards */
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -387,7 +383,6 @@
         .chart-container-lg { position: relative; height: 400px; }
         .chart-container-sm { position: relative; height: 260px; }
 
-        /* Table - No Horizontal Scroll */
         .table-wrapper {
             width: 100%;
             overflow: hidden;
@@ -482,7 +477,6 @@
             transition: width 1s ease;
         }
 
-        /* Insights */
         .insight {
             display: flex;
             gap: 14px;
@@ -524,7 +518,6 @@
 
         .insight-text { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
 
-        /* Heatmap */
         .heatmap {
             display: grid;
             grid-template-columns: 50px repeat(7, 1fr);
@@ -558,7 +551,6 @@
             font-size: 10px;
         }
 
-        /* Loading */
         #loading {
             position: fixed; inset: 0;
             background: var(--bg-primary);
@@ -616,7 +608,6 @@
 
         .hidden { opacity: 0; pointer-events: none; display: none !important; }
 
-        /* Toast */
         .toast {
             position: fixed;
             top: 24px; right: 24px;
@@ -638,7 +629,6 @@
 
         .toast.show { transform: translateX(0); }
 
-        /* Animations */
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
@@ -650,7 +640,6 @@
         .delay-3 { animation-delay: 0.3s; opacity: 0; }
         .delay-4 { animation-delay: 0.4s; opacity: 0; }
 
-        /* Responsive */
         @media (max-width: 1200px) {
             .stats-grid { grid-template-columns: repeat(3, 1fr); }
             .grid-3 { grid-template-columns: 1fr 1fr; }
@@ -867,8 +856,7 @@
 
 <script>
 const SHEET_ID = '1pS1Mx71tjvO__5HiQtF-MbudSyUG07LBOs_RkowDC9I';
-const TARGET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
-const SHEET_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL)}`;
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
 let charts = {};
 let allTrades = [];
@@ -900,7 +888,6 @@ function parseCSV(csvText) {
     const headers = parseLine(lines[0]);
     const data = [];
     
-    // Уточнённые индексы для точного соответствия вашей таблице
     const pnlNetIdx = headers.findIndex(h => h.includes('PnL $') || (h.toLowerCase().includes('pnl') && h.toLowerCase().includes('net') && !h.includes('%')));
     const flipIdx = headers.findIndex(h => h.toLowerCase().includes('флип') || h.toLowerCase().includes('flip'));
     const coinIdx = headers.findIndex(h => h.toLowerCase().includes('монет') || h.toLowerCase().includes('coin') || h.toLowerCase().includes('symbol') || h.toLowerCase().includes('тикер'));
@@ -922,7 +909,6 @@ function parseCSV(csvText) {
         const direction = dirIdx !== -1 ? cols[dirIdx].replace(/"/g, '').trim() : 'Unknown';
         const dateStr = dateIdx !== -1 ? cols[dateIdx].replace(/"/g, '').trim() : '';
         
-        // Надёжный парсер для формата ДД.ММ.ГГГГ ЧЧ:ММ:СС
         let validDate = new Date();
         if (dateStr) {
             const parts = dateStr.split(' ');
@@ -972,10 +958,15 @@ async function loadData() {
     
     try {
         const response = await fetch(SHEET_URL);
-        if (!response.ok) throw new Error('Network error');
+        if (!response.ok) {
+            if (response.status === 403 || response.status === 401) {
+                throw new Error('Доступ запрещен. Откройте доступ к таблице: "Все, у кого есть ссылка" -> "Читатель"');
+            }
+            throw new Error(`Ошибка сети: ${response.status}`);
+        }
         const csvText = await response.text();
         const trades = parseCSV(csvText);
-        if (trades.length === 0) throw new Error('Нет данных');
+        if (trades.length === 0) throw new Error('Нет данных для отображения');
         
         allTrades = trades;
         populateCoinFilter();
@@ -986,7 +977,7 @@ async function loadData() {
         showToast('✅ Данные успешно обновлены', 'success');
     } catch (err) {
         console.error(err);
-        showToast('❌ Ошибка загрузки: проверьте доступ к таблице', 'error');
+        showToast(`❌ ${err.message}`, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg> Обновить`;
@@ -1569,7 +1560,6 @@ function renderInsights(a) {
     `).join('');
 }
 
-// Filter event listeners
 document.getElementById('periodFilter').addEventListener('click', (e) => {
     if (!e.target.classList.contains('pill')) return;
     document.querySelectorAll('#periodFilter .pill').forEach(p => p.classList.remove('active'));
