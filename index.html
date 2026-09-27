@@ -399,7 +399,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
-            table-layout: fixed; /* Ключевое свойство для запрета горизонтального скролла */
+            table-layout: fixed;
         }
 
         th {
@@ -419,7 +419,7 @@
             border-bottom: 1px solid var(--border);
             font-family: 'JetBrains Mono', monospace;
             font-size: 12px;
-            word-wrap: break-word; /* Перенос длинных слов */
+            word-wrap: break-word;
             overflow: hidden;
         }
 
@@ -900,11 +900,12 @@ function parseCSV(csvText) {
     const headers = parseLine(lines[0]);
     const data = [];
     
-    const pnlNetIdx = headers.findIndex(h => h.includes('PnL') && (h.includes('net') || h.includes('Net')));
+    // Уточнённые индексы для точного соответствия вашей таблице
+    const pnlNetIdx = headers.findIndex(h => h.includes('PnL $') || (h.toLowerCase().includes('pnl') && h.toLowerCase().includes('net') && !h.includes('%')));
     const flipIdx = headers.findIndex(h => h.toLowerCase().includes('флип') || h.toLowerCase().includes('flip'));
     const coinIdx = headers.findIndex(h => h.toLowerCase().includes('монет') || h.toLowerCase().includes('coin') || h.toLowerCase().includes('symbol') || h.toLowerCase().includes('тикер'));
     const dirIdx = headers.findIndex(h => h.toLowerCase().includes('направлен') || h.toLowerCase().includes('direction') || h.toLowerCase().includes('side') || h.toLowerCase().includes('тип'));
-    const dateIdx = headers.findIndex(h => h.toLowerCase().includes('дат') || h.toLowerCase().includes('date') || h.toLowerCase().includes('time'));
+    const dateIdx = headers.findIndex(h => h.toLowerCase().includes('дата') || h.toLowerCase().includes('date') || h.toLowerCase().includes('время'));
 
     for (let i = 1; i < lines.length; i++) {
         const cols = parseLine(lines[i]);
@@ -920,8 +921,27 @@ function parseCSV(csvText) {
         const coin = coinIdx !== -1 ? cols[coinIdx].replace(/"/g, '').trim() : 'Unknown';
         const direction = dirIdx !== -1 ? cols[dirIdx].replace(/"/g, '').trim() : 'Unknown';
         const dateStr = dateIdx !== -1 ? cols[dateIdx].replace(/"/g, '').trim() : '';
-        const dateTime = new Date(dateStr);
-        const validDate = !isNaN(dateTime.getTime()) ? dateTime : new Date();
+        
+        // Надёжный парсер для формата ДД.ММ.ГГГГ ЧЧ:ММ:СС
+        let validDate = new Date();
+        if (dateStr) {
+            const parts = dateStr.split(' ');
+            const datePart = parts[0];
+            const timePart = parts[1] || '00:00:00';
+            const dParts = datePart.split('.');
+            if (dParts.length === 3) {
+                const isoStr = `${dParts[2]}-${dParts[1]}-${dParts[0]}T${timePart}`;
+                const parsed = new Date(isoStr);
+                if (!isNaN(parsed.getTime())) {
+                    validDate = parsed;
+                }
+            } else {
+                const fallback = new Date(dateStr);
+                if (!isNaN(fallback.getTime())) {
+                    validDate = fallback;
+                }
+            }
+        }
         
         if (coin !== 'Unknown') {
             data.push({
@@ -948,7 +968,7 @@ function showToast(msg, type = 'info') {
 async function loadData() {
     const btn = document.getElementById('refreshBtn');
     btn.disabled = true;
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="spin"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg> Загрузка...`;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg> Загрузка...`;
     
     try {
         const response = await fetch(SHEET_URL);
